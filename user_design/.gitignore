@@ -1,0 +1,12 @@
+*.bin
+*.json
+*.txt
+*.fasm
+*.csv
+*.bak
+*.vh
+*.vhd
+!pacman_closed_bitmap.vh
+!pacman_open_bitmap.vh
+*.gtkw
+build/
