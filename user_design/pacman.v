@@ -18,9 +18,9 @@ reg [9:0] h_pacman_pos;
 reg old_visible_in;
 
 parameter PACMAN_HEIGHT = 64;
-parameter PACMAN_WIDTH = 64;
+parameter PACMAN_WIDTH = 16;  // 64/4 for 1/4 pixel clock
 parameter LOWER_BORDER = 600-40;
-parameter RIGHT_BORDER = 200-10;
+parameter RIGHT_BORDER = 200-10-16;
 
 
 reg [10:0] pacman_counter;
@@ -45,8 +45,10 @@ wire at_start_of_frame;
 
 wire [5:0] pacman_x;
 wire [5:0] pacman_y;
+wire [3:0] pacman_x_offset;
 
-assign pacman_x = h_pixel_pos - h_pacman_pos;
+assign pacman_x_offset = h_pixel_pos - h_pacman_pos;
+assign pacman_x = {pacman_x_offset, 2'b00};  // Scale by 4
 assign pacman_y = v_pixel_pos - v_pacman_pos;
 
 
@@ -124,19 +126,9 @@ always @(posedge clk) begin : p_position_counter
         h_pacman_pos <= 'd0;
         v_pacman_pos <= 'd0;
     end else begin
-        if(at_start_of_frame) begin
-            if (h_pacman_pos >= RIGHT_BORDER) begin
-                h_pacman_pos <= 'b0;
-                if(v_pacman_pos >= LOWER_BORDER)  begin
-                    // Reached the bottom
-                    v_pacman_pos <= 'b0;
-                end else begin
-                    v_pacman_pos <= v_pacman_pos + 1;
-                end
-            end else begin
-                h_pacman_pos <= h_pacman_pos + 1;
-            end
-        end
+        // Fixed centered position
+        h_pacman_pos <= 'd92;
+        v_pacman_pos <= 'd268;
     end
 end
 
@@ -159,15 +151,15 @@ always @(posedge clk) begin : p_display
         begin
             if(pac_flag == 1'b1) begin
                 if (!pacman_open[pacman_y][pacman_x]) begin
-                    r_out <= 1'b1; //pac_red;
-                    g_out <= 1'b1; // pac_green;
-                    b_out <= 1'b1; // pac_blue;
+                    r_out <= 1'b1;
+                    g_out <= 1'b1;
+                    b_out <= 1'b0;  // Yellow
                 end
             end else begin
                 if (!pacman_closed[pacman_y][pacman_x]) begin
-                    r_out <= 1'b1; //pac_red;
-                    g_out <= 1'b1; // pac_green;
-                    b_out <= 1'b1; //   // pac_blue;
+                    r_out <= 1'b1;
+                    g_out <= 1'b1;
+                    b_out <= 1'b0;  // Yellow
                 end
             end
         end
