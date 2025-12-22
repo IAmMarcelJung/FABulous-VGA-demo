@@ -19,22 +19,18 @@ reg old_visible_in;
 
 parameter PACMAN_HEIGHT = 64;
 parameter PACMAN_WIDTH = 64;
-parameter LOWER_BORDER = 600;
-parameter RIGHT_BORDER = 200;
+parameter LOWER_BORDER = 600-40;
+parameter RIGHT_BORDER = 200-10;
 
-parameter H_FRONT_PORCH = RIGHT_BORDER + 5;
-parameter H_SYNC_PULSE = H_FRONT_PORCH + 32;
-
-parameter V_BACK_PORCH = 10;
-
-`include "pacman_closed_bitmap.vh"
-`include "pacman_open_bitmap.vh"
 
 reg [10:0] pacman_counter;
 reg pac_flag; // Tells which pacman sprite to use
 
-wire [63:0] pacman_open [0:63];
-wire [63:0] pacman_closed [0:63];
+reg [63:0] pacman_open [0:63];
+reg [63:0] pacman_closed [0:63];
+
+`include "pacman_closed_bitmap.vh"
+`include "pacman_open_bitmap.vh"
 
 
 wire r_in; wire g_in; wire b_in;
@@ -84,14 +80,19 @@ always @(posedge clk) begin : p_sync
         H_out <= H_in;
         V_out <= V_in;
 
+        // if(old_visible_in == 1'b1) begin
         if(in_line) begin
+          // in line
             h_pixel_pos <= h_pixel_pos + 1; // Traverse through the line
         end else begin
             h_pixel_pos <= 0;
+            // if(V_in == 1'b1)
+            //     v_pixel_pos <= v_pixel_pos + 1; // Go to the next line
         end
 
         if(V_in == 1'b0) begin
             v_pixel_pos <= 0;
+        // end else if(visible_in == 1'b0 && old_visible_in == 1'b1) begin
         end else if(at_end_of_visible_line) begin
             v_pixel_pos <= v_pixel_pos + 1; // Go to the next line
         end
@@ -124,9 +125,9 @@ always @(posedge clk) begin : p_position_counter
         v_pacman_pos <= 'd0;
     end else begin
         if(at_start_of_frame) begin
-            if (h_pacman_pos == RIGHT_BORDER) begin
+            if (h_pacman_pos >= RIGHT_BORDER) begin
                 h_pacman_pos <= 'b0;
-                if(v_pacman_pos == LOWER_BORDER)  begin
+                if(v_pacman_pos <= LOWER_BORDER)  begin
                     // Reached the bottom
                     v_pacman_pos <= 'b0;
                 end else begin
@@ -151,19 +152,20 @@ always @(posedge clk) begin : p_display
         g_out <= g_in;
         b_out <= b_in;
 
-        if(h_pixel_pos >= h_pacman_pos && h_pixel_pos < (h_pacman_pos + PACMAN_WIDTH)
-        && v_pixel_pos >= v_pacman_pos && v_pixel_pos < (v_pacman_pos + PACMAN_HEIGHT)) begin
+        if ((h_pixel_pos >= h_pacman_pos && h_pixel_pos < (h_pacman_pos + PACMAN_WIDTH))
+        && (v_pixel_pos >= v_pacman_pos && v_pixel_pos < (v_pacman_pos + PACMAN_HEIGHT)))
+        begin
             if(pac_flag == 1'b1) begin
                 if (!pacman_open[pacman_y][pacman_x]) begin
                     r_out <= 1'b1; //pac_red;
                     g_out <= 1'b1; // pac_green;
-                    b_out <= 1'b0; // pac_blue;
+                    b_out <= 1'b1; // pac_blue;
                 end
             end else begin
                 if (!pacman_closed[pacman_y][pacman_x]) begin
                     r_out <= 1'b1; //pac_red;
                     g_out <= 1'b1; // pac_green;
-                    b_out <= 1'b0; //   // pac_blue;
+                    b_out <= 1'b1; //   // pac_blue;
                 end
             end
         end

@@ -35,8 +35,12 @@ module top (
     wire [9:0]hcnt, vcnt;
     wire in_display_area;
 
-    localparam HVIS = 200;
-    localparam VVIS = 600;
+    localparam H_VIS_START = 64;
+    localparam H_VIS_END = 264;
+    localparam V_VIS_START = 27;
+    localparam V_VIS_END = 627;
+    // localparam HVIS = 264;
+    // localparam VVIS = 628;
 
     vga_gen vga_gen_inst(
         .clk(clk),
@@ -71,13 +75,13 @@ module top (
     wire [8:0] paddle_position;
     wire left, right;
 
-    wire border = (hcnt <= 4) // left border
-               || (hcnt >= HVIS - 1) //  right border
-               || (vcnt <= 8) // upper border
-               || (vcnt >= VVIS - 10); // lower border
+    wire border = (hcnt <= 10) // left border
+               || (hcnt >= 200 - 10) //  right border
+               || (vcnt <= 40) // upper border
+               || (vcnt >= 600 - 40); // lower border
     always @(posedge clk) begin
-        if (visible) begin
-            r <= border | hcnt[2] ^ vcnt[4];
+        if (in_display_area) begin
+            r <= border | hcnt[2] ^ vcnt[4]; //checkboard pattern
             g <= border;
             b <= border;
         end else {r, g, b} <= 3'b000;
