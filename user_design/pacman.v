@@ -26,8 +26,8 @@ parameter RIGHT_BORDER = 200-10;
 reg [10:0] pacman_counter;
 reg pac_flag; // Tells which pacman sprite to use
 
-reg [63:0] pacman_open [0:63];
-reg [63:0] pacman_closed [0:63];
+wire [63:0] pacman_open [0:63];
+wire [63:0] pacman_closed [0:63];
 
 `include "pacman_closed_bitmap.vh"
 `include "pacman_open_bitmap.vh"
@@ -90,7 +90,7 @@ always @(posedge clk) begin : p_sync
             //     v_pixel_pos <= v_pixel_pos + 1; // Go to the next line
         end
 
-        if(V_in == 1'b0) begin
+        if(V_in == 1'b1) begin
             v_pixel_pos <= 0;
         // end else if(visible_in == 1'b0 && old_visible_in == 1'b1) begin
         end else if(at_end_of_visible_line) begin
@@ -127,7 +127,7 @@ always @(posedge clk) begin : p_position_counter
         if(at_start_of_frame) begin
             if (h_pacman_pos >= RIGHT_BORDER) begin
                 h_pacman_pos <= 'b0;
-                if(v_pacman_pos <= LOWER_BORDER)  begin
+                if(v_pacman_pos >= LOWER_BORDER)  begin
                     // Reached the bottom
                     v_pacman_pos <= 'b0;
                 end else begin
@@ -152,6 +152,8 @@ always @(posedge clk) begin : p_display
         g_out <= g_in;
         b_out <= b_in;
 
+        //TODO fix the condition! this is not working properly, could als be
+        //that it never evaluets to true.
         if ((h_pixel_pos >= h_pacman_pos && h_pixel_pos < (h_pacman_pos + PACMAN_WIDTH))
         && (v_pixel_pos >= v_pacman_pos && v_pixel_pos < (v_pacman_pos + PACMAN_HEIGHT)))
         begin
