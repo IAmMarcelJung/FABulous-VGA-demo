@@ -38,7 +38,7 @@ wire visible_in;
 wire H_in; wire V_in;
 
 reg r_out; reg g_out; reg b_out;
-wire visible_out;
+reg visible_out;
 reg H_out; reg V_out;
 
 wire at_start_of_frame;
@@ -68,37 +68,35 @@ assign b_in       = video_bar_i[5];
 wire in_line = old_visible_in == 1'b1;
 wire at_end_of_visible_line = visible_in == 1'b0 && old_visible_in == 1'b1;
 
-assign H_out = H_in;
-assign V_out = V_in;
-
 always @(posedge clk) begin : p_sync
     if (rst) begin
         old_visible_in <= 1'b0;
         h_pixel_pos <= 'b0;
         v_pixel_pos <= 'b0;
+        H_out <= 1'b1;
+        V_out <= 1'b1;
+        visible_out <= 1'b0;
     end else begin
         old_visible_in <= visible_in;
 
-        // if(old_visible_in == 1'b1) begin
+        // Register sync and visible signals to match RGB pipeline delay
+        H_out <= H_in;
+        V_out <= V_in;
+        visible_out <= old_visible_in;
+
         if(in_line) begin
           // in line
             h_pixel_pos <= h_pixel_pos + 1; // Traverse through the line
         end else begin
             h_pixel_pos <= 0;
-            // if(V_in == 1'b1)
-            //     v_pixel_pos <= v_pixel_pos + 1; // Go to the next line
         end
-
         if(V_in == 1'b1) begin
             v_pixel_pos <= 0;
-        // end else if(visible_in == 1'b0 && old_visible_in == 1'b1) begin
         end else if(at_end_of_visible_line) begin
             v_pixel_pos <= v_pixel_pos + 1; // Go to the next line
         end
     end
 end
-
-assign visible_out = old_visible_in;
 
 assign at_start_of_frame = (h_pixel_pos == 0 && v_pixel_pos == 0);
 

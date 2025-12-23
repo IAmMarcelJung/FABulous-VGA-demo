@@ -48,7 +48,7 @@ module top (
     localparam V_BACK_PORCH = 33;
 
     // Display offset parameters (adjust if image is shifted)
-    localparam H_OFFSET = 40;
+    localparam H_OFFSET = 15;
     localparam V_OFFSET = 0;
 
     vga_gen #(
@@ -89,6 +89,7 @@ module top (
     );
     assign video_bar_in = {b, g, r, in_display_area, vsync, hsync};
     assign {b_out, g_out, r_out, visible, vsync_out, hsync_out} = video_bar_out;
+    // assign video_bar_out =  video_bar_in;
 
     wire [8:0] paddle_position;
     wire left, right;
