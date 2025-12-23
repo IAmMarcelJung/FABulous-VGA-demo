@@ -19,8 +19,8 @@ reg old_visible_in;
 
 parameter PACMAN_HEIGHT = 64;
 parameter PACMAN_WIDTH = 64;
-parameter LOWER_BORDER = 600-40;
-parameter RIGHT_BORDER = 200-10;
+parameter LOWER_BORDER = 480-10;  // Updated for 640x480 resolution
+parameter RIGHT_BORDER = 640-10;  // Updated for 640x480 resolution
 
 
 reg [10:0] pacman_counter;
@@ -68,17 +68,16 @@ assign b_in       = video_bar_i[5];
 wire in_line = old_visible_in == 1'b1;
 wire at_end_of_visible_line = visible_in == 1'b0 && old_visible_in == 1'b1;
 
+assign H_out = H_in;
+assign V_out = V_in;
+
 always @(posedge clk) begin : p_sync
     if (rst) begin
         old_visible_in <= 1'b0;
-        H_out <= 1'b0;
-        V_out <= 1'b0;
         h_pixel_pos <= 'b0;
         v_pixel_pos <= 'b0;
     end else begin
         old_visible_in <= visible_in;
-        H_out <= H_in;
-        V_out <= V_in;
 
         // if(old_visible_in == 1'b1) begin
         if(in_line) begin

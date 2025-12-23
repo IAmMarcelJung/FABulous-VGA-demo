@@ -32,24 +32,46 @@ module top (
 
     wire rst;
     wire hsync, vsync;
-    wire [9:0]hcnt, vcnt;
+    wire [11:0]hcnt, vcnt;
+    wire [11:0]x, y;
     wire in_display_area;
 
-    localparam H_VIS_START = 64;
-    localparam H_VIS_END = 264;
-    localparam V_VIS_START = 27;
-    localparam V_VIS_END = 627;
-    // localparam HVIS = 264;
-    // localparam VVIS = 628;
+    // VGA timing parameters (640x480 @ 60Hz)
+    localparam H_VISIBLE = 640;
+    localparam H_FRONT_PORCH = 16;
+    localparam H_SYNC = 96;
+    localparam H_BACK_PORCH = 48;
 
-    vga_gen vga_gen_inst(
+    localparam V_VISIBLE = 480;
+    localparam V_FRONT_PORCH = 10;
+    localparam V_SYNC = 2;
+    localparam V_BACK_PORCH = 33;
+
+    // Display offset parameters (adjust if image is shifted)
+    localparam H_OFFSET = 40;
+    localparam V_OFFSET = 0;
+
+    vga_gen #(
+        .H_VISIBLE(H_VISIBLE),
+        .H_FRONT_PORCH(H_FRONT_PORCH),
+        .H_SYNC(H_SYNC),
+        .H_BACK_PORCH(H_BACK_PORCH),
+        .V_VISIBLE(V_VISIBLE),
+        .V_FRONT_PORCH(V_FRONT_PORCH),
+        .V_SYNC(V_SYNC),
+        .V_BACK_PORCH(V_BACK_PORCH),
+        .H_OFFSET(H_OFFSET),
+        .V_OFFSET(V_OFFSET)
+    ) vga_gen_inst(
         .clk(clk),
         .rst(rst),
         .hsync(hsync),
         .vsync(vsync),
         .hcnt(hcnt),
         .vcnt(vcnt),
-        .in_display_area(in_display_area)
+        .in_display_area(in_display_area),
+        .x(x),
+        .y(y)
     );
 
     wire [5:0]video_bar_in, video_bar_out;
@@ -65,26 +87,28 @@ module top (
         .video_bar_i(video_bar_in),
         .video_bar_o(video_bar_out)
     );
-    // assign video_bar_out  = video_bar_in;
-
     assign video_bar_in = {b, g, r, in_display_area, vsync, hsync};
-
     assign {b_out, g_out, r_out, visible, vsync_out, hsync_out} = video_bar_out;
-
 
     wire [8:0] paddle_position;
     wire left, right;
 
-    wire border = (hcnt <= 10) // left border
-               || (hcnt >= 200 - 10) //  right border
-               || (vcnt <= 40) // upper border
-               || (vcnt >= 600 - 40); // lower border
+    wire border = (x <= 10) // left border
+               || (x >= 640 - 10) //  right border
+               || (y <= 10) // upper border
+               || (y >= 480 - 10); // lower border
+
+    // Make RGB registered to match registered sync signals
     always @(posedge clk) begin
         if (in_display_area) begin
-            r <= border | hcnt[2] ^ vcnt[4]; //checkboard pattern
+            r <= border | x[4] ^ y[4]; //checkboard pattern
             g <= border;
             b <= border;
-        end else {r, g, b} <= 3'b000;
+        end else begin
+            r <= 1'b0;
+            g <= 1'b0;
+            b <= 1'b0;
+        end
     end
 
     // Inputs
