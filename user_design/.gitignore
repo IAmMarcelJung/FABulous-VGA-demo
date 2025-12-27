@@ -10,3 +10,6 @@
 !pacman_open_bitmap.vh
 *.gtkw
 build/
+*.ppm
+*.vcd
+*.vvp
