@@ -33,7 +33,6 @@ module top (
     wire rst;
     wire hsync, vsync;
     wire [11:0]hcnt, vcnt;
-    wire [11:0]x, y;
     wire in_display_area;
 
     // VGA timing parameters (640x480 @ 60Hz)
@@ -63,15 +62,13 @@ module top (
         .vsync(vsync),
         .hcnt(hcnt),
         .vcnt(vcnt),
-        .in_display_area(in_display_area),
-        .x(x),
-        .y(y)
+        .in_display_area(in_display_area)
     );
 
     wire [29:0]video_bar_in, video_bar_out;
     wire visible;
     wire r_out, g_out, b_out, vsync_out, hsync_out;
-    wire [11:0] x_out, y_out;
+    wire [11:0] hcnt_out, vcnt_out;
 
     reg r, g, b;
 
@@ -82,22 +79,22 @@ module top (
         .video_bar_i(video_bar_in),
         .video_bar_o(video_bar_out)
     );
-    // video_bar format: {y[11:0], x[11:0], b, g, r, in_display_area, vsync, hsync}
-    assign video_bar_in = {y, x, b, g, r, in_display_area, vsync, hsync};
-    assign {y_out, x_out, b_out, g_out, r_out, visible, vsync_out, hsync_out} = video_bar_out;
+    // video_bar format: {vcnt[11:0], hcnt[11:0], b, g, r, in_display_area, vsync, hsync}
+    assign video_bar_in = {vcnt, hcnt, b, g, r, in_display_area, vsync, hsync};
+    assign {vcnt_out, hcnt_out, b_out, g_out, r_out, visible, vsync_out, hsync_out} = video_bar_out;
 
     wire [8:0] paddle_position;
     wire left, right;
 
-    wire border = (x <= 10) // left border
-               || (x >= 640 - 10) //  right border
-               || (y <= 10) // upper border
-               || (y >= 480 - 10); // lower border
+    wire border = (hcnt <= 10) // left border
+               || (hcnt >= 640 - 10) //  right border
+               || (vcnt <= 10) // upper border
+               || (vcnt >= 480 - 10); // lower border
 
     // Make RGB registered to match registered sync signals
     always @(posedge clk) begin
         if (in_display_area) begin
-            r <= border | x[4] ^ y[4]; //checkboard pattern
+            r <= border | hcnt[4] ^ vcnt[4]; //checkboard pattern
             g <= border;
             b <= border;
         end else begin

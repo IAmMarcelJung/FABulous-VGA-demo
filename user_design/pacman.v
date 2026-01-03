@@ -32,35 +32,35 @@ wire [63:0] pacman_closed [0:63];
 wire r_in; wire g_in; wire b_in;
 wire visible_in;
 wire H_in; wire V_in;
-wire [11:0] x_in;
-wire [11:0] y_in;
+wire [11:0] hcnt_in;
+wire [11:0] vcnt_in;
 
 reg r_out; reg g_out; reg b_out;
 reg visible_out;
 reg H_out; reg V_out;
-reg [11:0] x_out;
-reg [11:0] y_out;
+reg [11:0] hcnt_out;
+reg [11:0] vcnt_out;
 
 wire at_start_of_frame;
 
 wire [5:0] pacman_x;
 wire [5:0] pacman_y;
 
-// Calculate sprite pixel offset using x_in and y_in from VGA generator
-assign pacman_x = x_in - h_pacman_pos;
-assign pacman_y = y_in - v_pacman_pos;
+// Calculate sprite pixel offset using hcnt_in and vcnt_in from VGA generator
+assign pacman_x = hcnt_in - h_pacman_pos;
+assign pacman_y = vcnt_in - v_pacman_pos;
 
 
 //MAP BAR signals to readable internal signals
-// video_bar format: {y[11:0], x[11:0], b, g, r, in_display_area, vsync, hsync}
+// video_bar format: {vcnt[11:0], hcnt[11:0], b, g, r, in_display_area, vsync, hsync}
 assign video_bar_o[0] = H_out;
 assign video_bar_o[1] = V_out;
 assign video_bar_o[2] = visible_out;
 assign video_bar_o[3] = r_out;
 assign video_bar_o[4] = g_out;
 assign video_bar_o[5] = b_out;
-assign video_bar_o[17:6] = x_out;
-assign video_bar_o[29:18] = y_out;
+assign video_bar_o[17:6] = hcnt_out;
+assign video_bar_o[29:18] = vcnt_out;
 
 assign H_in       = video_bar_i[0];
 assign V_in       = video_bar_i[1];
@@ -68,28 +68,28 @@ assign visible_in = video_bar_i[2];
 assign r_in       = video_bar_i[3];
 assign g_in       = video_bar_i[4];
 assign b_in       = video_bar_i[5];
-assign x_in       = video_bar_i[17:6];
-assign y_in       = video_bar_i[29:18];
+assign hcnt_in    = video_bar_i[17:6];
+assign vcnt_in    = video_bar_i[29:18];
 
 always @(posedge clk) begin : p_sync
     if (rst) begin
         H_out <= 1'b1;
         V_out <= 1'b1;
         visible_out <= 1'b0;
-        x_out <= 'b0;
-        y_out <= 'b0;
+        hcnt_out <= 'b0;
+        vcnt_out <= 'b0;
     end else begin
         // Register sync, visible, and position signals to match RGB pipeline delay
         H_out <= H_in;
         V_out <= V_in;
         visible_out <= visible_in;
-        x_out <= x_in;
-        y_out <= y_in;
+        hcnt_out <= hcnt_in;
+        vcnt_out <= vcnt_in;
     end
 end
 
-// Detect start of frame using x and y inputs
-assign at_start_of_frame = (x_in == 0 && y_in == 0 && visible_in);
+// Detect start of frame using hcnt and vcnt inputs
+assign at_start_of_frame = (hcnt_in == 0 && vcnt_in == 0 && visible_in);
 
 always @(posedge clk) begin : p_pacman_counter
     if (rst) begin
@@ -140,9 +140,9 @@ always @(posedge clk) begin : p_display
         g_out <= g_in;
         b_out <= b_in;
 
-        // Check if current pixel is within pacman sprite bounds using x_in and y_in
-        if ((x_in >= h_pacman_pos && x_in < (h_pacman_pos + PACMAN_WIDTH))
-        && (y_in >= v_pacman_pos && y_in < (v_pacman_pos + PACMAN_HEIGHT)))
+        // Check if current pixel is within pacman sprite bounds using hcnt_in and vcnt_in
+        if ((hcnt_in >= h_pacman_pos && hcnt_in < (h_pacman_pos + PACMAN_WIDTH))
+        && (vcnt_in >= v_pacman_pos && vcnt_in < (v_pacman_pos + PACMAN_HEIGHT)))
         begin
             if(pac_flag == 1'b1) begin
                 if (!pacman_open[pacman_y][pacman_x]) begin

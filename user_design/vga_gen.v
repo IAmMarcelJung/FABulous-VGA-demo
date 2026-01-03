@@ -16,11 +16,8 @@ module vga_gen #(
     parameter V_VISIBLE     = 480,  // Vertical visible area
     parameter V_FRONT_PORCH = 10,   // Vertical front porch
     parameter V_SYNC        = 2,    // Vertical sync pulse width
-    parameter V_BACK_PORCH  = 33,   // Vertical back porch
+    parameter V_BACK_PORCH  = 33   // Vertical back porch
 
-    // Dummy offset parameters for backwards compatibility (not used)
-    parameter H_OFFSET = 0,
-    parameter V_OFFSET = 0
 )(
     input  wire clk,
     input  wire rst,
@@ -29,9 +26,7 @@ module vga_gen #(
     output reg vsync,               // Vertical sync (active low)
     output reg [11:0] hcnt,         // Horizontal counter (0 to H_TOTAL-1)
     output reg [11:0] vcnt,         // Vertical counter (0 to V_TOTAL-1)
-    output reg in_display_area,     // High when in visible display area
-    output reg [11:0] x,            // Horizontal pixel position (0 to H_VISIBLE-1)
-    output reg [11:0] y             // Vertical pixel position (0 to V_VISIBLE-1)
+    output reg in_display_area      // High when in visible display area
 );
 
     // Calculate total counts
@@ -61,8 +56,6 @@ module vga_gen #(
             hsync <= 1;  // Inactive (active low)
             vsync <= 1;  // Inactive (active low)
             in_display_area <= 0;
-            x <= 0;
-            y <= 0;
         end else begin
             // Update counters
             hcnt <= hcnt_next;
@@ -79,10 +72,6 @@ module vga_gen #(
 
             // Generate display area signal (high when in visible region)
             in_display_area <= (hcnt_next < H_VISIBLE) && (vcnt_next < V_VISIBLE);
-
-            // Generate x and y pixel coordinates (valid when in_display_area is high)
-            x <= hcnt_next;
-            y <= vcnt_next;
         end
     end
 
