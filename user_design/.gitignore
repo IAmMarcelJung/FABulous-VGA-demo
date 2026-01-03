@@ -13,3 +13,4 @@ build/
 *.ppm
 *.vcd
 *.vvp
+*.raw

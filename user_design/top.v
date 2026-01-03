@@ -48,7 +48,8 @@ module top (
     localparam V_BACK_PORCH = 33;
 
     // Display offset parameters (adjust if image is shifted)
-    localparam H_OFFSET = 15;
+    // localparam H_OFFSET = 15;
+    localparam H_OFFSET = 0;
     localparam V_OFFSET = 0;
 
     vga_gen #(
@@ -81,15 +82,15 @@ module top (
     reg r, g, b;
 
 
-    pacman pacman_inst(
-        .clk(clk),
-        .rst(rst),
-        .video_bar_i(video_bar_in),
-        .video_bar_o(video_bar_out)
-    );
+    // pacman pacman_inst(
+    //     .clk(clk),
+    //     .rst(rst),
+    //     .video_bar_i(video_bar_in),
+    //     .video_bar_o(video_bar_out)
+    // );
     assign video_bar_in = {b, g, r, in_display_area, vsync, hsync};
     assign {b_out, g_out, r_out, visible, vsync_out, hsync_out} = video_bar_out;
-    // assign video_bar_out =  video_bar_in;
+    assign video_bar_out =  video_bar_in;
 
     wire [8:0] paddle_position;
     wire left, right;
@@ -113,7 +114,6 @@ module top (
     end
 
     // Inputs
-
     assign rst = io_in[RESET_PIN];
     assign io_oeb[RESET_PIN] = OUTPUT_DISABLE;
     assign left = io_in[PADDLE_LEFT_INPUT_PIN];
