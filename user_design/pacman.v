@@ -6,16 +6,12 @@
 module pacman(
     input wire clk,
     input wire rst,
-    input wire [5:0]video_bar_i,
-    output wire [5:0]video_bar_o
+    input wire [29:0]video_bar_i,
+    output wire [29:0]video_bar_o
 );
-
-reg [9:0] v_pixel_pos;
-reg [9:0] h_pixel_pos;
 
 reg [9:0] v_pacman_pos;
 reg [9:0] h_pacman_pos;
-reg old_visible_in;
 
 parameter PACMAN_HEIGHT = 64;
 parameter PACMAN_WIDTH = 64;
@@ -36,27 +32,35 @@ wire [63:0] pacman_closed [0:63];
 wire r_in; wire g_in; wire b_in;
 wire visible_in;
 wire H_in; wire V_in;
+wire [11:0] x_in;
+wire [11:0] y_in;
 
 reg r_out; reg g_out; reg b_out;
 reg visible_out;
 reg H_out; reg V_out;
+reg [11:0] x_out;
+reg [11:0] y_out;
 
 wire at_start_of_frame;
 
 wire [5:0] pacman_x;
 wire [5:0] pacman_y;
 
-assign pacman_x = h_pixel_pos - h_pacman_pos;
-assign pacman_y = v_pixel_pos - v_pacman_pos;
+// Calculate sprite pixel offset using x_in and y_in from VGA generator
+assign pacman_x = x_in - h_pacman_pos;
+assign pacman_y = y_in - v_pacman_pos;
 
 
 //MAP BAR signals to readable internal signals
+// video_bar format: {y[11:0], x[11:0], b, g, r, in_display_area, vsync, hsync}
 assign video_bar_o[0] = H_out;
 assign video_bar_o[1] = V_out;
 assign video_bar_o[2] = visible_out;
 assign video_bar_o[3] = r_out;
 assign video_bar_o[4] = g_out;
 assign video_bar_o[5] = b_out;
+assign video_bar_o[17:6] = x_out;
+assign video_bar_o[29:18] = y_out;
 
 assign H_in       = video_bar_i[0];
 assign V_in       = video_bar_i[1];
@@ -64,41 +68,28 @@ assign visible_in = video_bar_i[2];
 assign r_in       = video_bar_i[3];
 assign g_in       = video_bar_i[4];
 assign b_in       = video_bar_i[5];
-
-wire in_line = old_visible_in == 1'b1;
-wire at_end_of_visible_line = visible_in == 1'b0 && old_visible_in == 1'b1;
+assign x_in       = video_bar_i[17:6];
+assign y_in       = video_bar_i[29:18];
 
 always @(posedge clk) begin : p_sync
     if (rst) begin
-        old_visible_in <= 1'b0;
-        h_pixel_pos <= 'b0;
-        v_pixel_pos <= 'b0;
         H_out <= 1'b1;
         V_out <= 1'b1;
         visible_out <= 1'b0;
+        x_out <= 'b0;
+        y_out <= 'b0;
     end else begin
-        old_visible_in <= visible_in;
-
-        // Register sync and visible signals to match RGB pipeline delay
+        // Register sync, visible, and position signals to match RGB pipeline delay
         H_out <= H_in;
         V_out <= V_in;
-        visible_out <= old_visible_in;
-
-        if(in_line) begin
-          // in line
-            h_pixel_pos <= h_pixel_pos + 1; // Traverse through the line
-        end else begin
-            h_pixel_pos <= 0;
-        end
-        if(V_in == 1'b1) begin
-            v_pixel_pos <= 0;
-        end else if(at_end_of_visible_line) begin
-            v_pixel_pos <= v_pixel_pos + 1; // Go to the next line
-        end
+        visible_out <= visible_in;
+        x_out <= x_in;
+        y_out <= y_in;
     end
 end
 
-assign at_start_of_frame = (h_pixel_pos == 0 && v_pixel_pos == 0);
+// Detect start of frame using x and y inputs
+assign at_start_of_frame = (x_in == 0 && y_in == 0 && visible_in);
 
 always @(posedge clk) begin : p_pacman_counter
     if (rst) begin
@@ -149,10 +140,9 @@ always @(posedge clk) begin : p_display
         g_out <= g_in;
         b_out <= b_in;
 
-        //TODO fix the condition! this is not working properly, could als be
-        //that it never evaluets to true.
-        if ((h_pixel_pos >= h_pacman_pos && h_pixel_pos < (h_pacman_pos + PACMAN_WIDTH))
-        && (v_pixel_pos >= v_pacman_pos && v_pixel_pos < (v_pacman_pos + PACMAN_HEIGHT)))
+        // Check if current pixel is within pacman sprite bounds using x_in and y_in
+        if ((x_in >= h_pacman_pos && x_in < (h_pacman_pos + PACMAN_WIDTH))
+        && (y_in >= v_pacman_pos && y_in < (v_pacman_pos + PACMAN_HEIGHT)))
         begin
             if(pac_flag == 1'b1) begin
                 if (!pacman_open[pacman_y][pacman_x]) begin

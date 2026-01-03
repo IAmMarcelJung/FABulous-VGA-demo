@@ -75,22 +75,23 @@ module top (
         .y(y)
     );
 
-    wire [5:0]video_bar_in, video_bar_out;
+    wire [29:0]video_bar_in, video_bar_out;
     wire visible;
     wire r_out, g_out, b_out, vsync_out, hsync_out;
+    wire [11:0] x_out, y_out;
 
     reg r, g, b;
 
 
-    // pacman pacman_inst(
-    //     .clk(clk),
-    //     .rst(rst),
-    //     .video_bar_i(video_bar_in),
-    //     .video_bar_o(video_bar_out)
-    // );
-    assign video_bar_in = {b, g, r, in_display_area, vsync, hsync};
-    assign {b_out, g_out, r_out, visible, vsync_out, hsync_out} = video_bar_out;
-    assign video_bar_out =  video_bar_in;
+    pacman pacman_inst(
+        .clk(clk),
+        .rst(rst),
+        .video_bar_i(video_bar_in),
+        .video_bar_o(video_bar_out)
+    );
+    // video_bar format: {y[11:0], x[11:0], b, g, r, in_display_area, vsync, hsync}
+    assign video_bar_in = {y, x, b, g, r, in_display_area, vsync, hsync};
+    assign {y_out, x_out, b_out, g_out, r_out, visible, vsync_out, hsync_out} = video_bar_out;
 
     wire [8:0] paddle_position;
     wire left, right;
