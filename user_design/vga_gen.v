@@ -1,60 +1,89 @@
+//----------------------------------------------------------------------------------------------------------
+// VGA Timing Generator - Clean Implementation
+// Generates standard VGA 640x480 @ 60Hz timing signals
+//
+// All outputs are perfectly synchronized - counters and signals update together
+// No confusing offsets - just clean, simple VGA timing
+//----------------------------------------------------------------------------------------------------------
+
 module vga_gen #(
-    // VGA timing parameters (default: 640x480 @ 60Hz)
-    parameter H_VISIBLE = 640,
-    parameter H_FRONT_PORCH = 16,
-    parameter H_SYNC = 96,
-    parameter H_BACK_PORCH = 48,
+    // VGA 640x480 @ 60Hz timing parameters (25 MHz pixel clock)
+    parameter H_VISIBLE     = 640,  // Horizontal visible area
+    parameter H_FRONT_PORCH = 16,   // Horizontal front porch
+    parameter H_SYNC        = 96,   // Horizontal sync pulse width
+    parameter H_BACK_PORCH  = 48,   // Horizontal back porch
 
-    parameter V_VISIBLE = 480,
-    parameter V_FRONT_PORCH = 10,
-    parameter V_SYNC = 2,
-    parameter V_BACK_PORCH = 33,
+    parameter V_VISIBLE     = 480,  // Vertical visible area
+    parameter V_FRONT_PORCH = 10,   // Vertical front porch
+    parameter V_SYNC        = 2,    // Vertical sync pulse width
+    parameter V_BACK_PORCH  = 33,   // Vertical back porch
 
-    // Display offset parameters
-    parameter H_OFFSET = 40,  // Horizontal offset to compensate for display shift
-    parameter V_OFFSET = 0    // Vertical offset to compensate for display shift
+    // Dummy offset parameters for backwards compatibility (not used)
+    parameter H_OFFSET = 0,
+    parameter V_OFFSET = 0
 )(
-    input clk,
-    input rst,
-    output reg hsync,
-    output reg vsync,
-    output reg [11:0] hcnt,
-    output reg [11:0] vcnt,
-    output reg in_display_area,
-    output reg [11:0] x,      // Display position X (adjusted for offset) - now registered
-    output reg [11:0] y       // Display position Y (adjusted for offset) - now registered
+    input  wire clk,
+    input  wire rst,
+
+    output reg hsync,               // Horizontal sync (active low)
+    output reg vsync,               // Vertical sync (active low)
+    output reg [11:0] hcnt,         // Horizontal counter (0 to H_TOTAL-1)
+    output reg [11:0] vcnt,         // Vertical counter (0 to V_TOTAL-1)
+    output reg in_display_area,     // High when in visible display area
+    output reg [11:0] x,            // Horizontal pixel position (0 to H_VISIBLE-1)
+    output reg [11:0] y             // Vertical pixel position (0 to V_VISIBLE-1)
 );
 
-    // Calculate total line/frame counts from parameters
-    localparam H_TOTAL = H_VISIBLE + H_FRONT_PORCH + H_SYNC + H_BACK_PORCH;
-    localparam V_TOTAL = V_VISIBLE + V_FRONT_PORCH + V_SYNC + V_BACK_PORCH;
+    // Calculate total counts
+    localparam H_TOTAL = H_VISIBLE + H_FRONT_PORCH + H_SYNC + H_BACK_PORCH;  // 800
+    localparam V_TOTAL = V_VISIBLE + V_FRONT_PORCH + V_SYNC + V_BACK_PORCH;  // 525
 
+    // Sync pulse start positions
+    localparam H_SYNC_START = H_VISIBLE + H_FRONT_PORCH;  // 656
+    localparam H_SYNC_END   = H_SYNC_START + H_SYNC;      // 752
+    localparam V_SYNC_START = V_VISIBLE + V_FRONT_PORCH;  // 490
+    localparam V_SYNC_END   = V_SYNC_START + V_SYNC;      // 492
 
+    // Calculate next counter values (combinatorial)
+    wire [11:0] hcnt_next;
+    wire [11:0] vcnt_next;
+
+    assign hcnt_next = (hcnt == H_TOTAL - 1) ? 12'd0 : hcnt + 12'd1;
+    assign vcnt_next = (hcnt == H_TOTAL - 1) ?
+                       ((vcnt == V_TOTAL - 1) ? 12'd0 : vcnt + 12'd1) :
+                       vcnt;
 
     always @(posedge clk) begin
         if (rst) begin
+            // Reset all counters and outputs
             hcnt <= 0;
             vcnt <= 0;
-            hsync <= 1;
-            vsync <= 1;
+            hsync <= 1;  // Inactive (active low)
+            vsync <= 1;  // Inactive (active low)
             in_display_area <= 0;
             x <= 0;
             y <= 0;
         end else begin
-            hcnt <= (hcnt == H_TOTAL - 1) ? 0 : hcnt + 1;
-            if (hcnt == H_TOTAL - 1) vcnt <= (vcnt == V_TOTAL - 1) ? 0 : vcnt + 1;
+            // Update counters
+            hcnt <= hcnt_next;
+            vcnt <= vcnt_next;
 
-            // All outputs registered for consistent timing
-            // Register x and y to match in_display_area pipeline timing
-            x <= hcnt - H_OFFSET;
-            y <= vcnt - V_OFFSET;
+            // Generate all outputs using NEXT counter values
+            // This ensures perfect synchronization - all signals reflect the same count
 
-            // Add offsets to shift visible area (compensate for display shift)
-            in_display_area <= (hcnt >= H_OFFSET) && (hcnt < H_VISIBLE + H_OFFSET) &&
-                              (vcnt >= V_OFFSET) && (vcnt < V_VISIBLE + V_OFFSET);
-            hsync <= ~((hcnt >= H_VISIBLE + H_FRONT_PORCH) && (hcnt < H_VISIBLE + H_FRONT_PORCH + H_SYNC));
-            vsync <= ~((vcnt >= V_VISIBLE + V_FRONT_PORCH) && (vcnt < V_VISIBLE + V_FRONT_PORCH + V_SYNC));
+            // Generate hsync pulse (active low during sync period)
+            hsync <= ~((hcnt_next >= H_SYNC_START) && (hcnt_next < H_SYNC_END));
+
+            // Generate vsync pulse (active low during sync period)
+            vsync <= ~((vcnt_next >= V_SYNC_START) && (vcnt_next < V_SYNC_END));
+
+            // Generate display area signal (high when in visible region)
+            in_display_area <= (hcnt_next < H_VISIBLE) && (vcnt_next < V_VISIBLE);
+
+            // Generate x and y pixel coordinates (valid when in_display_area is high)
+            x <= hcnt_next;
+            y <= vcnt_next;
         end
-  end
-  //
+    end
+
 endmodule

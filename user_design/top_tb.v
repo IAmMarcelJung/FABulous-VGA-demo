@@ -50,17 +50,14 @@ module top_tb;
     reg prev_hsync = 1;
     reg prev_vsync = 1;
 
-    // VGA counter organization: Visible -> Front Porch -> Sync -> Back Porch
-    localparam H_OFFSET = 15;  // From top.v
-    localparam V_OFFSET = 0;   // From top.v
+    // Pipeline delay: vga_gen outputs (registered) + top.v RGB (1) + pacman (1) = 2 clocks
+    localparam PIPELINE_DELAY = 2;
 
-    // Pipeline delay: in_display_area (1) + RGB (1) + pacman (1) = 3 clocks
-    localparam PIPELINE_DELAY = 3;
-
-    // Capture window accounting for offset and pipeline delay
-    localparam H_CAPTURE_START = H_OFFSET + PIPELINE_DELAY;
+    // Capture window accounting for pipeline delay
+    // Visible area is now hcnt 0-639, so we capture starting at PIPELINE_DELAY
+    localparam H_CAPTURE_START = PIPELINE_DELAY;
     localparam H_CAPTURE_END = H_CAPTURE_START + H_VISIBLE;
-    localparam V_CAPTURE_START = V_OFFSET + PIPELINE_DELAY;
+    localparam V_CAPTURE_START = PIPELINE_DELAY;
     localparam V_CAPTURE_END = V_CAPTURE_START + V_VISIBLE;
 
     // Clock generation

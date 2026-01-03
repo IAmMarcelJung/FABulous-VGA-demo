@@ -148,13 +148,13 @@ always @(posedge clk) begin : p_display
                 if (!pacman_open[pacman_y][pacman_x]) begin
                     r_out <= 1'b1; //pac_red;
                     g_out <= 1'b1; // pac_green;
-                    b_out <= 1'b1; // pac_blue;
+                    b_out <= 1'b0; // pac_blue;
                 end
             end else begin
                 if (!pacman_closed[pacman_y][pacman_x]) begin
                     r_out <= 1'b1; //pac_red;
                     g_out <= 1'b1; // pac_green;
-                    b_out <= 1'b1; //   // pac_blue;
+                    b_out <= 1'b0; //   // pac_blue;
                 end
             end
         end

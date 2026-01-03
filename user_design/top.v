@@ -47,11 +47,6 @@ module top (
     localparam V_SYNC = 2;
     localparam V_BACK_PORCH = 33;
 
-    // Display offset parameters (adjust if image is shifted)
-    // localparam H_OFFSET = 15;
-    localparam H_OFFSET = 0;
-    localparam V_OFFSET = 0;
-
     vga_gen #(
         .H_VISIBLE(H_VISIBLE),
         .H_FRONT_PORCH(H_FRONT_PORCH),
@@ -60,9 +55,7 @@ module top (
         .V_VISIBLE(V_VISIBLE),
         .V_FRONT_PORCH(V_FRONT_PORCH),
         .V_SYNC(V_SYNC),
-        .V_BACK_PORCH(V_BACK_PORCH),
-        .H_OFFSET(H_OFFSET),
-        .V_OFFSET(V_OFFSET)
+        .V_BACK_PORCH(V_BACK_PORCH)
     ) vga_gen_inst(
         .clk(clk),
         .rst(rst),

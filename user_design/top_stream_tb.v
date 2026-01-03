@@ -16,6 +16,10 @@ module top_stream_tb;
     // Clock period - 25MHz (40ns period for VGA pixel clock)
     localparam CLK_PERIOD = 40;
 
+    // Pipeline delay: vga_gen (1) + top.v RGB (1) + pacman (1) = 2 total cycles
+    // (vga_gen and top.v/pacman overlap in the same cycle)
+    localparam PIPELINE_DELAY = 2;
+
     // Pin definitions
     localparam RESET_PIN = 23;
     localparam VGA_VYSNC_PIN = 22;
@@ -44,12 +48,19 @@ module top_stream_tb;
     wire [11:0] hcnt = uut.hcnt;
     wire [11:0] vcnt = uut.vcnt;
 
-    // Simple capture using in_display_area directly
+    // Pipeline delay shift registers to synchronize capture with RGB output
+    reg [PIPELINE_DELAY-1:0] in_display_delay;
+    reg [PIPELINE_DELAY-1:0] vsync_delay;
+
+    wire in_display_delayed = in_display_delay[PIPELINE_DELAY-1];
+    wire vsync_delayed = vsync_delay[PIPELINE_DELAY-1];
+
+    // Frame tracking
     integer pixel_x = 0;
     integer pixel_y = 0;
     integer frame_count = 0;
-    reg prev_in_display = 0;
-    reg prev_vsync = 1;
+    reg prev_in_display_delayed = 0;
+    reg prev_vsync_delayed = 1;
 
     // Clock generation
     initial begin
@@ -57,13 +68,17 @@ module top_stream_tb;
         forever #(CLK_PERIOD/2) clk = ~clk;
     end
 
-    // Simple pixel capture - capture while in_display_area is high
+    // Pipeline delay and pixel capture with proper synchronization
     always @(posedge clk) begin
-        prev_in_display <= in_display_area;
-        prev_vsync <= vga_vsync;
+        // Shift in_display_area and vsync through delay pipeline
+        in_display_delay <= {in_display_delay[PIPELINE_DELAY-2:0], in_display_area};
+        vsync_delay <= {vsync_delay[PIPELINE_DELAY-2:0], vga_vsync};
 
-        // Detect vsync falling edge (start of new frame)
-        if (prev_vsync && !vga_vsync) begin
+        prev_in_display_delayed <= in_display_delayed;
+        prev_vsync_delayed <= vsync_delayed;
+
+        // Detect vsync falling edge (start of new frame) - using delayed signal
+        if (prev_vsync_delayed && !vsync_delayed) begin
             frame_count = frame_count + 1;
             pixel_y = 0;
             pixel_x = 0;
@@ -71,13 +86,15 @@ module top_stream_tb;
             $fflush(32'h8000_0002);
         end
 
-        // Reset pixel_x at start of each line
-        if (!prev_in_display && in_display_area) begin
+        // Reset pixel_x at start of each line - using delayed signal
+        if (!prev_in_display_delayed && in_display_delayed) begin
             pixel_x = 0;
         end
 
-        // Capture while in_display_area is high
-        if (in_display_area && pixel_x < H_VISIBLE && pixel_y < V_VISIBLE) begin
+        // Capture RGB using delayed in_display_area signal
+        // This ensures RGB data is synchronized with the correct pixel position
+        if (in_display_delayed && pixel_x < H_VISIBLE && pixel_y < V_VISIBLE) begin
+            // Write RGB bytes in order: R, G, B
             $fwrite(32'h8000_0001, "%c%c%c",
                 vga_r ? 8'd255 : 8'd0,
                 vga_g ? 8'd255 : 8'd0,
@@ -85,13 +102,14 @@ module top_stream_tb;
             );
             pixel_x = pixel_x + 1;
 
+            // Flush after each line for better streaming performance
             if (pixel_x >= H_VISIBLE) begin
                 $fflush(32'h8000_0001);
             end
         end
 
-        // End of line
-        if (prev_in_display && !in_display_area) begin
+        // End of line detection - using delayed signal
+        if (prev_in_display_delayed && !in_display_delayed) begin
             if (pixel_y < V_VISIBLE - 1) begin
                 pixel_y = pixel_y + 1;
             end
@@ -100,10 +118,15 @@ module top_stream_tb;
 
     // Main test sequence
     initial begin
-        $fwrite(32'h8000_0002, "=== VGA Streaming Testbench ===\n");
+        $fwrite(32'h8000_0002, "=== VGA Streaming Testbench (Pipeline Corrected) ===\n");
         $fwrite(32'h8000_0002, "Resolution: %0dx%0d\n", H_VISIBLE, V_VISIBLE);
+        $fwrite(32'h8000_0002, "Pipeline delay: %0d cycles\n", PIPELINE_DELAY);
         $fwrite(32'h8000_0002, "Streaming to stdout...\n");
         $fflush(32'h8000_0002);
+
+        // Initialize delay shift registers
+        in_display_delay = 0;
+        vsync_delay = {PIPELINE_DELAY{1'b1}};  // Initialize to high (inactive)
 
         // Initialize inputs
         io_in = 24'h0;
@@ -119,9 +142,11 @@ module top_stream_tb;
     end
 
     // Optional: Stop after N frames for testing
-    // Uncomment to auto-stop after 100 frames
+    // Uncomment to auto-stop after 10 frames
     // initial begin
-    //     wait(frame_count >= 100);
+    //     wait(frame_count >= 10);
+    //     #(CLK_PERIOD * H_TOTAL * V_TOTAL);
+    //     $fwrite(32'h8000_0002, "\nAuto-stopped after %0d frames\n", frame_count);
     //     $finish;
     // end
 

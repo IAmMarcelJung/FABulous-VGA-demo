@@ -83,7 +83,7 @@ stream: $(TOP_STREAM_VVP)
 	@echo "Starting VGA video stream..."
 	@echo "Press Ctrl+C to stop"
 	@echo ""
-	$(VVP) $(TOP_STREAM_VVP) 2>&1 | python vga_stream_viewer.py
+	$(VVP) $(TOP_STREAM_VVP) | python vga_stream_viewer.py
 
 # View VGA generator waveform
 view: $(VGA_GEN_VCD)
