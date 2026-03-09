@@ -50,11 +50,10 @@ module vga_gen #(
 
     always @(posedge clk) begin
         if (rst) begin
-            // Reset all counters and outputs
             hcnt <= 0;
             vcnt <= 0;
-            hsync <= 1;  // Inactive (active low)
-            vsync <= 1;  // Inactive (active low)
+            hsync <= 1;
+            vsync <= 1;
             in_display_area <= 0;
         end else begin
             // Update counters
@@ -62,15 +61,9 @@ module vga_gen #(
             vcnt <= vcnt_next;
 
             // Generate all outputs using NEXT counter values
-            // This ensures perfect synchronization - all signals reflect the same count
-
-            // Generate hsync pulse (active low during sync period)
+            // This ensures they are aligned with the hcnt/vcnt that will be on the wire
             hsync <= ~((hcnt_next >= H_SYNC_START) && (hcnt_next < H_SYNC_END));
-
-            // Generate vsync pulse (active low during sync period)
             vsync <= ~((vcnt_next >= V_SYNC_START) && (vcnt_next < V_SYNC_END));
-
-            // Generate display area signal (high when in visible region)
             in_display_area <= (hcnt_next < H_VISIBLE) && (vcnt_next < V_VISIBLE);
         end
     end

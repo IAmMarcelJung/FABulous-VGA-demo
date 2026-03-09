@@ -72,17 +72,17 @@ module top_tb;
         prev_vsync <= vga_vsync;
 
         // Synchronize h_counter on hsync rising edge
-        // hsync rises at hcnt = H_VISIBLE + H_FRONT_PORCH + H_SYNC = 752
+        // hsync rises at hcnt = H_VISIBLE + H_FRONT_PORCH + H_SYNC = 640 + 0 + 96 = 736
         if (!prev_hsync && vga_hsync) begin
-            h_counter = 752;  // Sync point
+            h_counter = 736;  // Sync point
         end else begin
             h_counter = (h_counter == H_TOTAL - 1) ? 0 : h_counter + 1;
         end
 
         // Synchronize v_counter on vsync rising edge
-        // vsync rises at vcnt = V_VISIBLE + V_FRONT_PORCH + V_SYNC = 492
+        // vsync rises at vcnt = V_VISIBLE + V_FRONT_PORCH + V_SYNC = 480 + 6 + 2 = 488
         if (!prev_vsync && vga_vsync) begin
-            v_counter = 492;  // Sync point
+            v_counter = 488;  // Sync point
 
             // Save previous frame
             if (frame_count > 0) begin

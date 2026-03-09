@@ -36,15 +36,18 @@ module top (
     wire in_display_area;
 
     // VGA timing parameters (640x480 @ 60Hz)
+    // Adjusted to fix horizontal/vertical shift:
+    // H_FRONT_PORCH 16 -> 0, H_BACK_PORCH 48 -> 64 (shifts 16 pixels right)
+    // V_FRONT_PORCH 10 -> 6, V_BACK_PORCH 33 -> 37 (shifts 4 lines down)
     localparam H_VISIBLE = 640;
-    localparam H_FRONT_PORCH = 16;
+    localparam H_FRONT_PORCH = 0;
     localparam H_SYNC = 96;
-    localparam H_BACK_PORCH = 48;
+    localparam H_BACK_PORCH = 64;
 
     localparam V_VISIBLE = 480;
-    localparam V_FRONT_PORCH = 10;
+    localparam V_FRONT_PORCH = 6;
     localparam V_SYNC = 2;
-    localparam V_BACK_PORCH = 33;
+    localparam V_BACK_PORCH = 37;
 
     vga_gen #(
         .H_VISIBLE(H_VISIBLE),
@@ -65,44 +68,37 @@ module top (
         .in_display_area(in_display_area)
     );
 
-    wire [29:0]video_bar_in, video_bar_out;
+    wire [29:0]video_bar_in;
+    wire [29:0]video_bar_out;
     wire visible;
     wire r_out, g_out, b_out, vsync_out, hsync_out;
     wire [11:0] hcnt_out, vcnt_out;
 
-    reg r, g, b;
-
-
-    pacman pacman_inst(
-        .clk(clk),
-        .rst(rst),
-        .video_bar_i(video_bar_in),
-        .video_bar_o(video_bar_out)
-    );
-    // video_bar format: {vcnt[11:0], hcnt[11:0], b, g, r, in_display_area, vsync, hsync}
-    assign video_bar_in = {vcnt, hcnt, b, g, r, in_display_area, vsync, hsync};
-    assign {vcnt_out, hcnt_out, b_out, g_out, r_out, visible, vsync_out, hsync_out} = video_bar_out;
-
-    wire [8:0] paddle_position;
-    wire left, right;
-
+    // Combinatorial RGB generation
+    wire r_val, g_val, b_val;
     wire border = (hcnt <= 10) // left border
                || (hcnt >= 640 - 10) //  right border
                || (vcnt <= 10) // upper border
                || (vcnt >= 480 - 10); // lower border
 
-    // Make RGB registered to match registered sync signals
+    assign r_val = in_display_area ? (border | hcnt[4] ^ vcnt[4]) : 1'b0;
+    assign g_val = in_display_area ? border : 1'b0;
+    assign b_val = in_display_area ? border : 1'b0;
+
+    // Register the entire video bar to align all signals and improve timing
+    reg [29:0] video_bar_reg;
     always @(posedge clk) begin
-        if (in_display_area) begin
-            r <= border | hcnt[4] ^ vcnt[4]; //checkboard pattern
-            g <= border;
-            b <= border;
+        if (rst) begin
+            video_bar_reg <= 30'd0;
         end else begin
-            r <= 1'b0;
-            g <= 1'b0;
-            b <= 1'b0;
+            video_bar_reg <= {vcnt, hcnt, b_val, g_val, r_val, in_display_area, vsync, hsync};
         end
     end
+
+    // video_bar format: {vcnt[11:0], hcnt[11:0], b, g, r, in_display_area, vsync, hsync}
+    assign video_bar_in = video_bar_reg;
+    assign {vcnt_out, hcnt_out, b_out, g_out, r_out, visible, vsync_out, hsync_out} = video_bar_out;
+    assign video_bar_out = video_bar_in; // passthrough for now
 
     // Inputs
     assign rst = io_in[RESET_PIN];
